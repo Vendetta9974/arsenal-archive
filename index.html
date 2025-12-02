@@ -6,6 +6,8 @@
   <style>
     body { font-family: system-ui, Arial; margin: 16px; }
     #status { margin-bottom: 12px; }
+    label { font-weight: bold; margin-right: 8px; }
+    select { margin-bottom: 12px; }
     table { border-collapse: collapse; width: 100%; }
     th, td { border: 1px solid #ccc; padding: 6px; font-size: 12px; }
     th { background: #f6f6f6; text-align: left; position: sticky; top: 0; }
@@ -13,9 +15,12 @@
 </head>
 <body>
   <h1>PlayerSummary_Base preview</h1>
-  <label>Competition:
-    <select id="compteition"></select>
+
+  <!-- Dropdown filter -->
+  <label>DebutCompetition:
+    <select id="debutComp"></select>
   </label>
+
   <div id="status">Loading…</div>
   <table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
 
@@ -27,9 +32,7 @@
         if (!res.ok) { document.getElementById('status').textContent = 'Could not load CSV.'; return; }
         const text = await res.text();
 
-        // Basic CSV parse: handles quoted fields and commas inside quotes.
-        const rows = [];
-        const lines = text.split(/\r?\n/).filter(l => l.length);
+        // Parse CSV (handles quoted fields)
         const parseLine = (line) => {
           const out = []; let cur = ''; let inQ = false;
           for (let i = 0; i < line.length; i++) {
@@ -42,37 +45,51 @@
           out.push(cur);
           return out;
         };
+        const lines = text.split(/\r?\n/).filter(l => l.length);
         const headers = parseLine(lines[0]);
-        for (let i = 1; i < lines.length; i++) rows.push(parseLine(lines[i]));
+        const rows = lines.slice(1).map(parseLine);
 
-        // Header
+        // Build header
         const thead = document.getElementById('thead');
         const htr = document.createElement('tr');
         headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; htr.appendChild(th); });
         thead.appendChild(htr);
 
-        // Build body function
-function renderTable(filteredRows) {
-  const tbody = document.getElementById('tbody');
-  tbody.innerHTML = '';
-  filteredRows.slice(0, 300).forEach(r => {
-    const tr = document.createElement('tr');
-    r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
-    tbody.appendChild(tr);
-  });
-  document.getElementById('status').textContent = `Loaded ${filteredRows.length} rows (showing first 300).`;
-}
+        // Render function
+        function renderTable(filteredRows) {
+          const tbody = document.getElementById('tbody');
+          tbody.innerHTML = '';
+          filteredRows.slice(0, 300).forEach(r => {
+            const tr = document.createElement('tr');
+            r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+            tbody.appendChild(tr);
+          });
+          document.getElementById('status').textContent = `Loaded ${filteredRows.length} rows (showing first 300).`;
+        }
 
-// Build dropdown
-const compIndex = headers.indexOf('Competition');
-const compSet = [...new Set(rows.map(r => r[compIndex]))].sort();
-const select = document.getElementById('competition');
-select.innerHTML = '<option value="">(All)</option>' + compSet.map(c => `<option>${c}</option>`).join('');
-select.onchange = () => {
-  const val = select.value;
-  const filtered = val ? rows.filter(r => r[compIndex] === val) : rows;
-  renderTable(filtered);
-};
+        // Dropdown for DebutCompetition
+        const compIndex = headers.indexOf('DebutCompetition');
+        const select = document.getElementById('debutComp');
+        if (compIndex >= 0) {
+          const compSet = [...new Set(rows.map(r => r[compIndex]))].sort();
+          select.innerHTML = '<option value="">(All)</option>' + compSet.map(c => `<option>${c}</option>`).join('');
+          select.onchange = () => {
+            const val = select.value;
+            const filtered = val ? rows.filter(r => r[compIndex] === val) : rows;
+            renderTable(filtered);
+          };
+        } else {
+          select.innerHTML = '<option>(Column not found)</option>';
+        }
 
-// Initial render
-renderTable(rows);
+        // Initial render
+        renderTable(rows);
+
+      } catch (e) {
+        document.getElementById('status').textContent = 'Error loading CSV.';
+      }
+    }
+    loadCSV();
+  </script>
+</body>
+</html>
