@@ -16,9 +16,8 @@
 <body>
   <h1>PlayerSummary_Base preview</h1>
 
-  <!-- Dropdown filter -->
-  <label>DebutCompetition:
-    <select id="debutComp"></select>
+  <label for="debutComp">DebutCompetition:
+    <select id="debutComp"><option>(Loading…)</option></select>
   </label>
 
   <div id="status">Loading…</div>
@@ -29,10 +28,9 @@
       const csvUrl = './PlayerSummary_Base.csv';
       try {
         const res = await fetch(csvUrl);
-        if (!res.ok) { document.getElementById('status').textContent = 'Could not load CSV.'; return; }
+        if (!res.ok) throw new Error('Fetch failed');
         const text = await res.text();
 
-        // Parse CSV (handles quoted fields)
         const parseLine = (line) => {
           const out = []; let cur = ''; let inQ = false;
           for (let i = 0; i < line.length; i++) {
@@ -45,17 +43,16 @@
           out.push(cur);
           return out;
         };
+
         const lines = text.split(/\r?\n/).filter(l => l.length);
         const headers = parseLine(lines[0]);
         const rows = lines.slice(1).map(parseLine);
 
-        // Build header
         const thead = document.getElementById('thead');
         const htr = document.createElement('tr');
         headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; htr.appendChild(th); });
         thead.appendChild(htr);
 
-        // Render function
         function renderTable(filteredRows) {
           const tbody = document.getElementById('tbody');
           tbody.innerHTML = '';
@@ -67,9 +64,9 @@
           document.getElementById('status').textContent = `Loaded ${filteredRows.length} rows (showing first 300).`;
         }
 
-        // Dropdown for DebutCompetition
         const compIndex = headers.indexOf('DebutCompetition');
         const select = document.getElementById('debutComp');
+
         if (compIndex >= 0) {
           const compSet = [...new Set(rows.map(r => r[compIndex]))].sort();
           select.innerHTML = '<option value="">(All)</option>' + compSet.map(c => `<option>${c}</option>`).join('');
@@ -79,16 +76,17 @@
             renderTable(filtered);
           };
         } else {
-          select.innerHTML = '<option>(Column not found)</option>';
+          select.innerHTML = '<option>(DebutCompetition column not found)</option>';
         }
 
-        // Initial render
         renderTable(rows);
 
       } catch (e) {
         document.getElementById('status').textContent = 'Error loading CSV.';
+        document.getElementById('debutComp').innerHTML = '<option>(CSV load failed)</option>';
       }
     }
+
     loadCSV();
   </script>
 </body>
