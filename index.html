@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>PlayerSummary_Base preview</title>
+  <style>
+    body { font-family: system-ui, Arial; margin: 16px; }
+    #status { margin-bottom: 12px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ccc; padding: 6px; font-size: 12px; }
+    th { background: #f6f6f6; text-align: left; position: sticky; top: 0; }
+  </style>
+</head>
+<body>
+  <h1>PlayerSummary_Base preview</h1>
+  <div id="status">Loading…</div>
+  <table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+
+  <script>
+    async function loadCSV() {
+      const csvUrl = './PlayerSummary_Base.csv';
+      try {
+        const res = await fetch(csvUrl);
+        if (!res.ok) { document.getElementById('status').textContent = 'Could not load CSV.'; return; }
+        const text = await res.text();
+
+        // Basic CSV parse: handles quoted fields and commas inside quotes.
+        const rows = [];
+        const lines = text.split(/\r?\n/).filter(l => l.length);
+        const parseLine = (line) => {
+          const out = []; let cur = ''; let inQ = false;
+          for (let i = 0; i < line.length; i++) {
+            const ch = line[i], nx = line[i+1];
+            if (ch === '"' && inQ && nx === '"') { cur += '"'; i++; continue; }
+            if (ch === '"') { inQ = !inQ; continue; }
+            if (ch === ',' && !inQ) { out.push(cur); cur = ''; continue; }
+            cur += ch;
+          }
+          out.push(cur);
+          return out;
+        };
+        const headers = parseLine(lines[0]);
+        for (let i = 1; i < lines.length; i++) rows.push(parseLine(lines[i]));
+
+        // Header
+        const thead = document.getElementById('thead');
+        const htr = document.createElement('tr');
+        headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; htr.appendChild(th); });
+        thead.appendChild(htr);
+
+        // Body (first 300 rows)
+        const tbody = document.getElementById('tbody');
+        rows.slice(0, 300).forEach(r => {
+          const tr = document.createElement('tr');
+          r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('status').textContent = `Loaded ${rows.length} rows (showing first 300).`;
+      } catch (e) {
+        document.getElementById('status').textContent = 'Error loading CSV.';
+      }
+    }
+    loadCSV();
+  </script>
+</body>
+</html>
