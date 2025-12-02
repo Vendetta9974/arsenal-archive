@@ -13,6 +13,9 @@
 </head>
 <body>
   <h1>PlayerSummary_Base preview</h1>
+  <label>Competition:
+    <select id="compteition"></select>
+  </label>
   <div id="status">Loading…</div>
   <table id="tbl"><thead id="thead"></thead><tbody id="tbody"></tbody></table>
 
@@ -48,20 +51,28 @@
         headers.forEach(h => { const th = document.createElement('th'); th.textContent = h; htr.appendChild(th); });
         thead.appendChild(htr);
 
-        // Body (first 300 rows)
-        const tbody = document.getElementById('tbody');
-        rows.slice(0, 300).forEach(r => {
-          const tr = document.createElement('tr');
-          r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
-          tbody.appendChild(tr);
-        });
+        // Build body function
+function renderTable(filteredRows) {
+  const tbody = document.getElementById('tbody');
+  tbody.innerHTML = '';
+  filteredRows.slice(0, 300).forEach(r => {
+    const tr = document.createElement('tr');
+    r.forEach(c => { const td = document.createElement('td'); td.textContent = c; tr.appendChild(td); });
+    tbody.appendChild(tr);
+  });
+  document.getElementById('status').textContent = `Loaded ${filteredRows.length} rows (showing first 300).`;
+}
 
-        document.getElementById('status').textContent = `Loaded ${rows.length} rows (showing first 300).`;
-      } catch (e) {
-        document.getElementById('status').textContent = 'Error loading CSV.';
-      }
-    }
-    loadCSV();
-  </script>
-</body>
-</html>
+// Build dropdown
+const compIndex = headers.indexOf('Competition');
+const compSet = [...new Set(rows.map(r => r[compIndex]))].sort();
+const select = document.getElementById('competition');
+select.innerHTML = '<option value="">(All)</option>' + compSet.map(c => `<option>${c}</option>`).join('');
+select.onchange = () => {
+  const val = select.value;
+  const filtered = val ? rows.filter(r => r[compIndex] === val) : rows;
+  renderTable(filtered);
+};
+
+// Initial render
+renderTable(rows);
